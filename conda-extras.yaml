@@ -2,16 +2,16 @@ name: dinov2-extras
 channels:
   - defaults
   - pytorch
-  - nvidia
   - xformers
   - conda-forge
+  - nvidia/label/cuda-11.7.0
 dependencies:
-  - python=3.9
-  - pytorch::pytorch=2.0.0
+  - python=3.10
+  - pytorch::pytorch=1.13.1
   - pytorch::pytorch-cuda=11.7.0
-  - pytorch::torchvision=0.15.0
+  - pytorch::torchvision
   - omegaconf
-  - torchmetrics=0.10.3
+  - torchmetrics
   - fvcore
   - iopath
   - xformers::xformers=0.0.18
@@ -20,5 +20,8 @@ dependencies:
     - git+https://github.com/facebookincubator/submitit
     - --extra-index-url https://pypi.nvidia.com
     - cuml-cu11
-    - mmcv-full==1.5.0
-    - mmsegmentation==0.27.0
+    - mkl==2024.0
+    # - mmcv-full==1.5.0
+    # - mmsegmentation==0.27.0
+    # pip install mmcv-full==1.5.0 --no-build-isolation
+    # pip install mmsegmentation==0.27.0 --no-build-isolation
