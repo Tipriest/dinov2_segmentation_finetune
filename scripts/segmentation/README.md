@@ -17,3 +17,30 @@ python scripts/segmentation/predict_overlay.py  --config dinov2/configs/segmenta
 ```shell
 python scripts/segmentation/eval_test.py   --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head.py   --checkpoint /home/tipriest/Documents/CVTask/dinov2/work_dirs/dinov2_vits14_ctem_ms/latest.pth
 ```
+
+# 评估参数量和计算的FLOPS
+单尺度 FLOPs 用 --input-size 直接计算。
+多尺度 FLOPs 会读取 config 里的 MultiScaleFlipAug 的 img_ratios，按 input-size 作为基准缩放并求和；如果 flip=True 会乘以 2。
+输出会包含每个 ratio 对应的输入尺寸和 FLOPs。
+如果你希望“多尺度 FLOPs”基于真实图片的长短边规则（而不是基于 input-size 缩放），告诉我你想用的实际基准尺寸或图片尺寸分布，我可以把计算逻辑改得更贴近实际推理。建议下一步你可以：
+
+提供你实际推理时的图像尺寸规则（例如固定短边 640）
+告诉我是否需要把模型移动到 GPU 并统计 GPU 上的 FLOPs
+
+```shell
+# CPU
+python scripts/segmentation/compute_model_stats.py \
+  --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head.py \
+  --backbone dinov2_vits14 \
+  --checkpoint /home/tipriest/Documents/CVTask/dinov2_segmentation_finetune/work_dirs/dinov2_vits14_ctem_ms/latest.pth \
+  --input-size 640 640 \
+  --device cpu
+
+# GPU
+python scripts/segmentation/compute_model_stats.py \
+  --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head.py \
+  --backbone dinov2_vits14 \
+  --checkpoint /home/tipriest/Documents/CVTask/dinov2_segmentation_finetune/work_dirs/dinov2_vits14_ctem_ms/latest.pth \
+  --input-size 640 640 \
+  --device cuda
+```

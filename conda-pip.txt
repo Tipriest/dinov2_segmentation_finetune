@@ -1,0 +1,3 @@
+git+https://github.com/facebookincubator/submitit
+cuml-cu11
+mkl==2024.0

@@ -16,11 +16,11 @@ dependencies:
   - iopath
   - xformers::xformers=0.0.18
   - pip
-  - pip:
-    - git+https://github.com/facebookincubator/submitit
-    - --extra-index-url https://pypi.nvidia.com
-    - cuml-cu11
-    - mkl==2024.0
+  # - pip:
+  #   - git+https://github.com/facebookincubator/submitit
+  #   - --extra-index-url https://pypi.nvidia.com
+  #   - cuml-cu11
+  #   - mkl==2024.0
     # - mmcv-full==1.5.0
     # - mmsegmentation==0.27.0
     # pip install mmcv-full==1.5.0 --no-build-isolation
