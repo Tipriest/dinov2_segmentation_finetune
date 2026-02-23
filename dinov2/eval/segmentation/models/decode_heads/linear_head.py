@@ -18,7 +18,10 @@ class BNHead(BaseDecodeHead):
     def __init__(self, resize_factors=None, **kwargs):
         super().__init__(**kwargs)
         assert self.in_channels == self.channels
-        self.bn = nn.SyncBatchNorm(self.in_channels)
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            self.bn = nn.SyncBatchNorm(self.in_channels)
+        else:
+            self.bn = nn.BatchNorm2d(self.in_channels)
         self.resize_factors = resize_factors
 
     def _forward_feature(self, inputs):
