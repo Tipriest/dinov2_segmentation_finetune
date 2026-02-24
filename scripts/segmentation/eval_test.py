@@ -1,4 +1,6 @@
 import argparse
+import os
+import subprocess
 from functools import partial
 
 import torch
@@ -13,6 +15,22 @@ import dinov2.eval.segmentation.models
 
 # 新增 thop 用于 FLOPs 统计
 from thop import profile
+
+# ===== 新增 nvidia-smi 显存查询 =====
+def nvidia_smi_used_mem_mb():
+    """查询当前进程显存占用（MiB）"""
+    try:
+        pid = os.getpid()
+        cmd = f"nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits"
+        out = subprocess.check_output(cmd.split()).decode().strip().splitlines()
+        for line in out:
+            cols = [c.strip() for c in line.split(',')]
+            if len(cols) >= 2 and str(pid) == cols[0]:
+                return int(cols[1])
+        return -1
+    except Exception:
+        return -1
+# ==================================
 
 class CenterPadding(torch.nn.Module):
     def __init__(self, multiple):
@@ -94,7 +112,22 @@ def print_model_parameters(model):
         print(f"{name:60} {param_count:,} ({param_count/1e6:.3f} M)")
     print("="*80)
     print(f"Total parameters: {total_params:,} ({total_params/1e6:.3f} M)")
+def reset_cuda_mem():
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.synchronize()
 
+def print_cuda_mem(tag=""):
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+        alloc = torch.cuda.memory_allocated() / 1024**2
+        reserved = torch.cuda.memory_reserved() / 1024**2
+        peak = torch.cuda.max_memory_allocated() / 1024**2
+        smi_used = nvidia_smi_used_mem_mb()
+        print(f"[CUDA Mem] {tag} | "
+              f"allocated={alloc:.1f} MB, reserved={reserved:.1f} MB, peak={peak:.1f} MB, "
+              f"nvidia-smi used={smi_used} MB")
 def main():
     parser = argparse.ArgumentParser(description="Evaluate DINOv2 segmentation head on test split")
     parser.add_argument("--config", required=True, help="Path to mmseg config file")
@@ -127,7 +160,12 @@ def main():
     print(f"Backbone parameters: {backbone_params/1e6:.3f} M")
     print(f"Head parameters: {head_params/1e6:.3f} M")
 
-    # ==== FLOPs统计 Start ====
+    print(f"Effective batch size: {cfg.data.samples_per_gpu * torch.cuda.device_count()} "
+          f"( {cfg.data.samples_per_gpu} per GPU × {torch.cuda.device_count()} GPUs )")
+
+    if args.device.startswith("cuda"):
+        reset_cuda_mem()
+
     dummy_input = torch.randn(1, 3, args.input_size[1], args.input_size[0]).to(args.device)
 
     # 保存原始 forward 方法
@@ -139,7 +177,13 @@ def main():
     else:
         print("Warning: model has no forward_dummy(), FLOPs may not be accurate.")
 
+    # FLOPs统计
     flops, params = profile(model, inputs=(dummy_input,), verbose=False)
+
+    # 显存峰值
+    if args.device.startswith("cuda"):
+        print_cuda_mem("after FLOPs calc")
+
     print(f"\n=== Model FLOPs & Params ===")
     print(f"Input size: {args.input_size[0]} x {args.input_size[1]}")
     print(f"Total FLOPs: {flops / 1e9:.3f} GFLOPs")
@@ -166,8 +210,14 @@ def main():
     # print_model_parameters(model.decode_head)
     if args.device.startswith("cuda"):
         model = MMDataParallel(model, device_ids=[0])
+        reset_cuda_mem()
 
     outputs = single_gpu_test(model, data_loader, show=False)
+
+    if args.device.startswith("cuda"):
+        print("")
+        print_cuda_mem("after inference")
+
     metrics = dataset.evaluate(outputs, metric="mIoU")
 
     for key, value in metrics.items():
