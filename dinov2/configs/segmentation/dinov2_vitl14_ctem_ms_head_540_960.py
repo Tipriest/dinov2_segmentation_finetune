@@ -54,12 +54,12 @@ test_pipeline = [
     dict(
         type="MultiScaleFlipAug",
         img_scale=(960, 540),
-        img_ratios=[1.0, 1.32, 1.73, 2.28, 3.0],
-        flip=False,
+        # img_ratios=[1.0, 1.32, 1.73, 2.28, 3.0],
+        # flip=True,
         # img_ratios=[1.0, 1.32, 1.73],
-        # flip=False,
-        # img_ratios=[1.0],
-        # flip=False,
+        # flip=True,
+        img_ratios=[1.0],
+        flip=False,
         transforms=[
             dict(type="Resize", keep_ratio=True),
             dict(type="RandomFlip"),
@@ -119,10 +119,10 @@ model = dict(
     backbone=dict(type="DinoVisionTransformer", out_indices=[8, 9, 10, 11]),
     decode_head=dict(
         type="BNHead",
-        in_channels=[384, 384, 384, 384],
+        in_channels=[1024, 1024, 1024, 1024],
         in_index=[0, 1, 2, 3],
         input_transform="resize_concat",
-        channels=1536,
+        channels=4096,  # 1024*4
         dropout_ratio=0.0,
         num_classes=6,
         norm_cfg=norm_cfg,
@@ -163,7 +163,7 @@ device = "cuda"
 cudnn_benchmark = True
 find_unused_parameters = True
 
-work_dir = "./work_dirs/dinov2_vits14_ctem_ms_540_960"
+work_dir = "./work_dirs/dinov2_vitl14_ctem_ms_540_960"
 
 resume_from = None
 auto_resume = True

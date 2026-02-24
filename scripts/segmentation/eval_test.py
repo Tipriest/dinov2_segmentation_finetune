@@ -136,6 +136,7 @@ def main():
     parser.add_argument("--device", default="cuda", help="cuda or cpu")
     parser.add_argument("--input_size", type=int, nargs=2, default=[960, 540],
                         help="Input size for FLOPs calculation: [width height]")
+    parser.add_argument("--docs", default=None, help="docs how many channels")
     args = parser.parse_args()
 
     cfg = Config.fromfile(args.config)
@@ -187,7 +188,7 @@ def main():
     print(f"\n=== Model FLOPs & Params ===")
     print(f"Input size: {args.input_size[0]} x {args.input_size[1]}")
     print(f"Total FLOPs: {flops / 1e9:.3f} GFLOPs")
-    print(f"Total Params: {params / 1e6:.3f} M")
+    # print(f"Total Params: {params / 1e6:.3f} M")
     print("============================\n")
 
     # 恢复原 forward 方法，继续正常推理

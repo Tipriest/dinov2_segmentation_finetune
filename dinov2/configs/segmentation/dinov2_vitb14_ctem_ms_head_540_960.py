@@ -119,10 +119,10 @@ model = dict(
     backbone=dict(type="DinoVisionTransformer", out_indices=[8, 9, 10, 11]),
     decode_head=dict(
         type="BNHead",
-        in_channels=[384, 384, 384, 384],
+        in_channels=[768, 768, 768, 768],
         in_index=[0, 1, 2, 3],
         input_transform="resize_concat",
-        channels=1536,
+        channels=3072,  # 768*4
         dropout_ratio=0.0,
         num_classes=6,
         norm_cfg=norm_cfg,
@@ -163,7 +163,7 @@ device = "cuda"
 cudnn_benchmark = True
 find_unused_parameters = True
 
-work_dir = "./work_dirs/dinov2_vits14_ctem_ms_540_960"
+work_dir = "./work_dirs/dinov2_vitl14_ctem_ms_540_960"
 
 resume_from = None
 auto_resume = True

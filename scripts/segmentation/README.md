@@ -9,6 +9,17 @@ python scripts/segmentation/train_head.py --config dinov2/configs/segmentation/d
 ```shell
 python scripts/segmentation/train_head.py --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head_540_960.py
 ```
+
+用自己的数据集对ms_head(540_960)进行微调(验证过)
+```shell
+python scripts/segmentation/train_head.py --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head_540_960.py --backbone dinov2_vits14
+
+python scripts/segmentation/train_head.py --config dinov2/configs/segmentation/dinov2_vitb14_ctem_ms_head_540_960.py --backbone dinov2_vitb14
+
+python scripts/segmentation/train_head.py --config dinov2/configs/segmentation/dinov2_vitl14_ctem_ms_head_540_960.py --backbone dinov2_vitl14
+```
+
+
 用自己的数据集对linear_head进行微调(未验证过)
 ```shell
 python scripts/segmentation/train_head.py --config dinov2/configs/segmentation/dinov2_vits14_ctem_linear_head.py
@@ -30,7 +41,14 @@ python scripts/segmentation/eval_test.py   --config dinov2/configs/segmentation/
 python scripts/segmentation/eval_test.py \
     --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head_540_960.py \
     --checkpoint /home/tipriest/Documents/CVTask/dinov2_segmentation_finetune/work_dirs/dinov2_vits14_ctem_ms_540_960/latest.pth \
-    --input_size 960 540
+    --input_size 960 540 \
+    --docs 3channels
+
+python scripts/segmentation/eval_test.py \
+    --config dinov2/configs/segmentation/dinov2_vitb14_ctem_ms_head_540_960.py \
+    --checkpoint /home/tipriest/Documents/CVTask/dinov2_segmentation_finetune/work_dirs/dinov2_vitb14_ctem_ms_540_960/latest.pth \
+    --input_size 960 540 \
+    --backbone dinov2_vitb14 --docs 3channels
 ```
 
 # 评估参数量和计算的FLOPS
