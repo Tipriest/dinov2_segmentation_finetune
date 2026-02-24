@@ -5,6 +5,10 @@
 ```shell
 python scripts/segmentation/train_head.py --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head.py
 ```
+用自己的数据集对ms_head(540_960)进行微调(验证过)
+```shell
+python scripts/segmentation/train_head.py --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head_540_960.py
+```
 用自己的数据集对linear_head进行微调(未验证过)
 ```shell
 python scripts/segmentation/train_head.py --config dinov2/configs/segmentation/dinov2_vits14_ctem_linear_head.py
@@ -16,6 +20,17 @@ python scripts/segmentation/predict_overlay.py  --config dinov2/configs/segmenta
 使用微调后的模型对自己指定的测试集进行评估
 ```shell
 python scripts/segmentation/eval_test.py   --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head.py   --checkpoint /home/tipriest/Documents/CVTask/dinov2_segmentation_finetune/work_dirs/dinov2_vits14_ctem_ms/latest.pth
+```
+
+使用微调后的模型对自己指定的测试集(540_960)进行评估
+```shell
+python scripts/segmentation/eval_test.py   --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head_540_960.py   --checkpoint /home/tipriest/Documents/CVTask/dinov2_segmentation_finetune/work_dirs/dinov2_vits14_ctem_ms_540_960/latest.pth
+--input_size 640 640
+
+python scripts/segmentation/eval_test.py \
+    --config dinov2/configs/segmentation/dinov2_vits14_ctem_ms_head_540_960.py \
+    --checkpoint /home/tipriest/Documents/CVTask/dinov2_segmentation_finetune/work_dirs/dinov2_vits14_ctem_ms_540_960/latest.pth \
+    --input_size 960 540
 ```
 
 # 评估参数量和计算的FLOPS

@@ -11,6 +11,8 @@ from mmcv.parallel import MMDataParallel
 
 import dinov2.eval.segmentation.models
 
+# 新增 thop 用于 FLOPs 统计
+from thop import profile
 
 class CenterPadding(torch.nn.Module):
     def __init__(self, multiple):
@@ -63,6 +65,7 @@ def build_head_only_model(cfg, backbone_name, device):
                 n=cfg.model.backbone.out_indices,
                 reshape=True
             )
+
         return feats
     # 将新的 forward 绑定到 model.backbone
     import types
@@ -98,6 +101,8 @@ def main():
     parser.add_argument("--checkpoint", required=True, help="Path to trained checkpoint (.pth)")
     parser.add_argument("--backbone", default="dinov2_vits14", help="DINOv2 backbone name")
     parser.add_argument("--device", default="cuda", help="cuda or cpu")
+    parser.add_argument("--input_size", type=int, nargs=2, default=[960, 540],
+                        help="Input size for FLOPs calculation: [width height]")
     args = parser.parse_args()
 
     cfg = Config.fromfile(args.config)
@@ -122,20 +127,43 @@ def main():
     print(f"Backbone parameters: {backbone_params/1e6:.3f} M")
     print(f"Head parameters: {head_params/1e6:.3f} M")
 
-    print("*"*60)
-    print("model params")
-    print("*"*60)
-    print_model_parameters(model)
+    # ==== FLOPs统计 Start ====
+    dummy_input = torch.randn(1, 3, args.input_size[1], args.input_size[0]).to(args.device)
 
-    print("*"*60)
-    print("backbone params")
-    print("*"*60)
-    print_model_parameters(model.backbone)
+    # 保存原始 forward 方法
+    orig_forward = model.forward
 
-    print("*"*60)
-    print("head params")
-    print("*"*60)
-    print_model_parameters(model.decode_head)
+    # 使用 forward_dummy 进行 FLOPs 计算
+    if hasattr(model, 'forward_dummy'):
+        model.forward = model.forward_dummy
+    else:
+        print("Warning: model has no forward_dummy(), FLOPs may not be accurate.")
+
+    flops, params = profile(model, inputs=(dummy_input,), verbose=False)
+    print(f"\n=== Model FLOPs & Params ===")
+    print(f"Input size: {args.input_size[0]} x {args.input_size[1]}")
+    print(f"Total FLOPs: {flops / 1e9:.3f} GFLOPs")
+    print(f"Total Params: {params / 1e6:.3f} M")
+    print("============================\n")
+
+    # 恢复原 forward 方法，继续正常推理
+    model.forward = orig_forward
+    # ==== FLOPs统计 End ====
+
+    # print("*"*60)
+    # print("model params")
+    # print("*"*60)
+    # print_model_parameters(model)
+
+    # print("*"*60)
+    # print("backbone params")
+    # print("*"*60)
+    # print_model_parameters(model.backbone)
+
+    # print("*"*60)
+    # print("head params")
+    # print("*"*60)
+    # print_model_parameters(model.decode_head)
     if args.device.startswith("cuda"):
         model = MMDataParallel(model, device_ids=[0])
 
