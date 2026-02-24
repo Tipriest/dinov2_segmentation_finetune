@@ -34,32 +34,63 @@ class CenterPadding(torch.nn.Module):
 
 
 def build_head_only_model(cfg, backbone_name, device):
+    # 1. 先建立 mmseg 的分割模型（包含一个空的 backbone 和 head）
     model = build_segmentor(cfg.model)
 
+    # 2. 加载预训练 DINOv2 backbone
     backbone_model = torch.hub.load("facebookresearch/dinov2", backbone_name)
     backbone_model.eval()
     backbone_model.to(device)
 
-    def forward_no_grad(*args, **kwargs):
-        with torch.no_grad():
-            return backbone_model.get_intermediate_layers(*args, **kwargs)
+    # 3. 把 backbone_model 挂到 model.backbone 下，这样参数可以被统计
+    #    注意：这样可以避免丢失参数树
+    model.backbone.dino = backbone_model
 
-    model.backbone.forward = partial(
-        forward_no_grad,
-        n=cfg.model.backbone.out_indices,
-        reshape=True,
-    )
-
+    # 保存 patch_size 信息，后面 padding 用
     if hasattr(backbone_model, "patch_size"):
-        model.backbone.register_forward_pre_hook(
-            lambda _, x: CenterPadding(backbone_model.patch_size)(x[0])
-        )
+        model.backbone.patch_size = backbone_model.patch_size
 
+    # 4. 重写 model.backbone 的 forward
+    def backbone_forward(self, x):
+        # 如果 patch_size 存在，先居中 padding
+        if hasattr(self, "patch_size"):
+            x = CenterPadding(self.patch_size)(x)
+
+        # 从 dino 提取中间层特征
+        with torch.no_grad():
+            feats = self.dino.get_intermediate_layers(
+                x,
+                n=cfg.model.backbone.out_indices,
+                reshape=True
+            )
+        return feats
+    # 将新的 forward 绑定到 model.backbone
+    import types
+    model.backbone.forward = types.MethodType(backbone_forward, model.backbone)
+
+    # 5. 放到对应设备上
     model.to(device)
     model.eval()
     model.cfg = cfg
     return model
 
+def count_parameters(model):
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return total, trainable
+
+def count_submodule_parameters(module):
+    return sum(p.numel() for p in module.parameters())
+
+
+def print_model_parameters(model):
+    total_params = 0
+    for name, param in model.named_parameters():
+        param_count = param.numel()
+        total_params += param_count
+        print(f"{name:60} {param_count:,} ({param_count/1e6:.3f} M)")
+    print("="*80)
+    print(f"Total parameters: {total_params:,} ({total_params/1e6:.3f} M)")
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate DINOv2 segmentation head on test split")
@@ -83,6 +114,28 @@ def main():
     model = build_head_only_model(cfg, args.backbone, args.device)
     load_checkpoint(model, args.checkpoint, map_location="cpu")
 
+    total_params, trainable_params = count_parameters(model)
+    backbone_params = count_submodule_parameters(model.backbone.dino)
+    head_params = count_submodule_parameters(model.decode_head)
+    print(f"Total parameters: {total_params:,}")
+    print(f"Trainable parameters: {trainable_params:,}")
+    print(f"Backbone parameters: {backbone_params/1e6:.3f} M")
+    print(f"Head parameters: {head_params/1e6:.3f} M")
+
+    print("*"*60)
+    print("model params")
+    print("*"*60)
+    print_model_parameters(model)
+
+    print("*"*60)
+    print("backbone params")
+    print("*"*60)
+    print_model_parameters(model.backbone)
+
+    print("*"*60)
+    print("head params")
+    print("*"*60)
+    print_model_parameters(model.decode_head)
     if args.device.startswith("cuda"):
         model = MMDataParallel(model, device_ids=[0])
 

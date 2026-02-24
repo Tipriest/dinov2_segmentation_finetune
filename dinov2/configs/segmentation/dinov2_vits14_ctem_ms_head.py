@@ -56,8 +56,10 @@ test_pipeline = [
         img_scale=(99999999, 640),
         # img_ratios=[1.0, 1.32, 1.73, 2.28, 3.0],
         # flip=True,
-        img_ratios=[1.0, 1.32, 1.73],
-        flip=True,
+        # img_ratios=[1.0, 1.32, 1.73],
+        # flip=True,
+        img_ratios=[1.0],
+        flip=False,
         transforms=[
             dict(type="Resize", keep_ratio=True),
             dict(type="RandomFlip"),
